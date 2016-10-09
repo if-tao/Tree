@@ -484,15 +484,6 @@ bool BinaryTree<Type>::IsFullBTree(BtNode * p)
 		return false;
 }
 
-
-/*测试用例
-//ABC##D##EF##G##
-//ABC##D##EF###
-//ABC##D##E##
-//ABC###E##
-//ABC##D###
-//A#BD###
-*/
 template<typename Type>
 bool BinaryTree<Type>::IsCompleteBTree(BtNode * p)
 {
@@ -617,10 +608,6 @@ typename BinaryTree<Type>::BtNode * BinaryTree<Type>::FindParent(BtNode * ptr, B
 	return s;
 }
 
-/*
-寻找最近公共双亲节点
-用两个栈来实现，可能有点麻烦,遍历树的次数太多
-*/
 //template<typename Type>
 //typename BinaryTree<Type>::BtNode * BinaryTree<Type>::NearParent(BtNode * root, BtNode * p1, BtNode * p2)
 //{
@@ -697,12 +684,6 @@ typename BinaryTree<Type>::BtNode * BinaryTree<Type>::NearParent(BtNode * root, 
 
 /*
 拷贝函数
-*/
-/*测试用例
-ABC##D##EF##G##
-A#EFG####
-AB##EFG####
-NULL
 */
 template<typename Type>
 void BinaryTree<Type>::Copy(BtNode * &desc, BtNode * src)
