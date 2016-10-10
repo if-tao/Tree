@@ -19,18 +19,22 @@ public:
 	typedef BstNode* PBstNode;
 	BSTree(KeyType value = -1) :root(NULL), RefValue(value) {}
 	~BSTree();
+	bool NiceInsert(const KeyType &kx);
 	bool Insert(const KeyType &kx);
-	BstNode * Find(const KeyType &kx);
-	BstNode * Search(const KeyType &kx);
+	BstNode * Find(const KeyType &kx) const;
+	BstNode * Search(const KeyType &kx) const;
+	bool NiceRemove(const KeyType &kx);
 	bool Remove(const KeyType &kx);
-	void NiceInOrder();
-	void ResNiceInOrder();
+	void NiceInOrder() const;
+	void ResNiceInOrder() const;
 private:
 	static BstNode * _Buynode();
 	static void _Freenode(BstNode *p);
 	static void DestoryTree(BstNode *ptr);
-	static bool Insert(BstNode **ptr, KeyType kx);
-	static bool Remove(BstNode **ptr, KeyType kx);
+	static bool Insert(BstNode *&ptr, KeyType kx,BstNode *pa);
+	static bool NiceInsert(BstNode **ptr, KeyType kx);
+	static bool Remove(BstNode *&ptr, KeyType kx, BstNode *pa);
+	static bool NiceRemove(BstNode **ptr, KeyType kx);
 	static BstNode * Find(BstNode *ptr, KeyType kx);
 	static BstNode * Search(BstNode *ptr, KeyType kx);
 	static BstNode * First(BstNode *ptr);
@@ -49,22 +53,31 @@ BSTree<KeyType>::~BSTree()
 }
 
 template<typename KeyType>
-bool BSTree<KeyType>::Insert(const KeyType &kx)
+bool BSTree<KeyType>::NiceInsert(const KeyType &kx)
 {
 	if (kx != RefValue)
-		return Insert(&root, kx);
+		return NiceInsert(&root, kx);
 	else
 		return false;
 }
 
 template<typename KeyType>
-typename BSTree<KeyType>::BstNode * BSTree<KeyType>::Find(const KeyType &kx)
+bool BSTree<KeyType>::Insert(const KeyType & kx)
+{
+	if (kx != RefValue)
+		return Insert(root, kx, NULL);
+	else
+		return false;
+}
+
+template<typename KeyType>
+typename BSTree<KeyType>::BstNode * BSTree<KeyType>::Find(const KeyType &kx) const
 {
 	return Find(root, kx);
 }
 
 template<typename KeyType>
-typename BSTree<KeyType>::BstNode * BSTree<KeyType>::Search(const KeyType &kx)
+typename BSTree<KeyType>::BstNode * BSTree<KeyType>::Search(const KeyType &kx) const
 {
 	if (kx != RefValue)
 		return Search(root, kx);
@@ -73,16 +86,25 @@ typename BSTree<KeyType>::BstNode * BSTree<KeyType>::Search(const KeyType &kx)
 }
 
 template<typename KeyType>
-bool BSTree<KeyType>::Remove(const KeyType &kx)
+bool BSTree<KeyType>::NiceRemove(const KeyType &kx)
 {
 	if (kx != RefValue)
-		return Remove(&root, kx);
+		return NiceRemove(&root, kx);
 	else
 		return false;
 }
 
 template<typename KeyType>
-void BSTree<KeyType>::NiceInOrder()
+bool BSTree<KeyType>::Remove(const KeyType & kx)
+{
+	if (kx != RefValue)
+		return Remove(root, kx, NULL);
+	else
+		return false;
+}
+
+template<typename KeyType>
+void BSTree<KeyType>::NiceInOrder() const
 {
 	for (BstNode *p = First(root); p != NULL; p = Next(p))
 	{
@@ -92,7 +114,7 @@ void BSTree<KeyType>::NiceInOrder()
 }
 
 template<typename KeyType>
-void BSTree<KeyType>::ResNiceInOrder()
+void BSTree<KeyType>::ResNiceInOrder() const
 {
 	for (BstNode *p = Last(root); p != NULL; p = Prev(p))
 	{
@@ -107,7 +129,7 @@ typename BSTree<KeyType>::BstNode * BSTree<KeyType>::_Buynode()
 	BstNode *p = (BstNode *)malloc(sizeof(BstNode));
 	assert(p != NULL);
 
-	memset(p, 0, sizeof(p));
+	memset(p, 0, sizeof(BstNode));
 	return p;
 }
 
@@ -130,7 +152,7 @@ void BSTree<KeyType>::DestoryTree(BstNode * ptr)
 }
 
 template<typename KeyType>
-bool BSTree<KeyType>::Insert(BstNode ** ptr, KeyType kx)
+bool BSTree<KeyType>::NiceInsert(BstNode ** ptr, KeyType kx)
 {
 	if(ptr == NULL) return false;
 	BstNode *p = *ptr;
@@ -159,7 +181,75 @@ bool BSTree<KeyType>::Insert(BstNode ** ptr, KeyType kx)
 }
 
 template<typename KeyType>
-bool BSTree<KeyType>::Remove(BstNode ** ptr, KeyType kx)
+bool BSTree<KeyType>::Insert(BstNode *& ptr, KeyType kx,BstNode *pa)
+{
+	bool res = false;
+	if (ptr == NULL)
+	{
+		ptr = _Buynode();
+		ptr->key = kx;
+		ptr->parent = pa;
+		res = true;
+	}
+	else
+	{
+		if (kx < ptr->key)
+		{
+			res = Insert(ptr->leftchild, kx, ptr);
+		}
+		else if (kx > ptr->key)
+		{
+			res = Insert(ptr->rightchild, kx, ptr);
+		}
+	}
+	return res;
+}
+
+template<typename KeyType>
+bool BSTree<KeyType>::Remove(BstNode *& ptr, KeyType kx, BstNode *pa)
+{
+	bool res = false;
+	BstNode *p = ptr;
+	if (p == NULL) return res;
+	if (kx < p->key)
+	{
+		res = Remove(p->leftchild, kx, ptr);
+	}
+	else if (kx > p->key)
+	{
+		res = Remove(p->rightchild, kx, ptr);
+	}
+	else
+	{
+		BstNode *child = NULL;
+		if (p->leftchild != NULL && p->rightchild != NULL)
+		{
+			child = Next(p);
+			p->key = child->key;
+			p = child;
+			pa = p->parent;
+		}
+		child = p->leftchild != NULL ? p->leftchild : p->rightchild;
+		if (child != NULL) child->parent = pa;
+		if (pa != NULL)
+		{
+			if (pa->leftchild == p)
+				pa->leftchild = child;
+			else if (pa->rightchild == p)
+				pa->rightchild = child;
+		}
+		else
+		{
+			ptr = child;
+		}
+		_Freenode(p);
+		res = true;
+	}
+	return res;
+}
+
+template<typename KeyType>
+bool BSTree<KeyType>::NiceRemove(BstNode ** ptr, KeyType kx)
 {
 	if (ptr == NULL || *ptr == NULL) return false;
 	BstNode *p = Find(*ptr, kx);
