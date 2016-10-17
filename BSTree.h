@@ -33,7 +33,7 @@ private:
 	static void DestoryTree(BstNode *ptr);
 	static bool Insert(BstNode *&ptr, KeyType kx,BstNode *pa);
 	static bool NiceInsert(BstNode **ptr, KeyType kx);
-	static bool Remove(BstNode *&ptr, KeyType kx, BstNode *pa);
+	static bool Remove(BstNode *&ptr, KeyType kx);
 	static bool NiceRemove(BstNode **ptr, KeyType kx);
 	static BstNode * Find(BstNode *ptr, KeyType kx);
 	static BstNode * Search(BstNode *ptr, KeyType kx);
@@ -98,7 +98,7 @@ template<typename KeyType>
 bool BSTree<KeyType>::Remove(const KeyType & kx)
 {
 	if (kx != RefValue)
-		return Remove(root, kx, NULL);
+		return Remove(root, kx);
 	else
 		return false;
 }
@@ -206,46 +206,33 @@ bool BSTree<KeyType>::Insert(BstNode *& ptr, KeyType kx,BstNode *pa)
 }
 
 template<typename KeyType>
-bool BSTree<KeyType>::Remove(BstNode *& ptr, KeyType kx, BstNode *pa)
+bool BSTree<KeyType>::Remove(BstNode *& ptr, KeyType kx)
 {
 	bool res = false;
-	BstNode *p = ptr;
-	if (p == NULL) return res;
-	if (kx < p->key)
+	if(ptr == NULL) return res;
+	else if(x < ptr->key)
 	{
-		res = Remove(p->leftchild, kx, ptr);
+		res = Remove(ptr->leftchild,x);
 	}
-	else if (kx > p->key)
+	else if(x > ptr->key)
 	{
-		res = Remove(p->rightchild, kx, ptr);
+		res = Remove(ptr->rightchild,x);
+	}
+	else if(ptr->leftchild != NULL && ptr->rightchild != NULL)
+	{
+		BstNode *child = Next(ptr);
+		ptr->key = child->key;
+		res = Remove(ptr->rightchild,child->key);
 	}
 	else
 	{
-		BstNode *child = NULL;
-		if (p->leftchild != NULL && p->rightchild != NULL)
-		{
-			child = Next(p);
-			p->key = child->key;
-			p = child;
-			pa = p->parent;
-		}
-		child = p->leftchild != NULL ? p->leftchild : p->rightchild;
-		if (child != NULL) child->parent = pa;
-		if (pa != NULL)
-		{
-			if (pa->leftchild == p)
-				pa->leftchild = child;
-			else if (pa->rightchild == p)
-				pa->rightchild = child;
-		}
-		else
-		{
-			ptr = child;
-		}
-		_Freenode(p);
+		BstNode *child = ptr->leftchild != NULL ? p->leftchild : p->rightchild;
+		if(child != NULL) child->parent = ptr->parent;
+		BstNode *q = ptr;
+		ptr = child;
+		_Freenode(q);
 		res = true;
 	}
-	return res;
 }
 
 template<typename KeyType>
