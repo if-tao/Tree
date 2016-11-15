@@ -1,3 +1,7 @@
+#ifndef _RBTREE_H_
+#define _RBTREE_H_
+
+
 
 #include <iostream>
 #include <memory>
@@ -42,6 +46,49 @@ protected:
 		return _P->_Parent;
 	}
 public:
+
+	class iterator
+	{
+	private:
+		typedef typename R_BTree::_Node _Node;
+		typedef typename R_BTree::_Nodeptr _Nodeptr;
+		R_BTree * _Tree;
+		typename R_BTree::_Nodeptr _Ptr;
+	public:
+		iterator(R_BTree* tree = NULL,_Nodeptr _ptr=NULL) :_Tree(tree), _Ptr(_ptr) {}
+		_Node operator*() const { return *_Ptr; }
+		void operator++() { _Ptr = _Tree->_Next(_Ptr); }
+		bool operator==(const iterator &it)
+		{
+			return this->_Tree == it._Tree && this->_Ptr == it._Ptr;
+		}
+		bool operator!=(const iterator &it)
+		{
+			return !(*this == it);
+		}
+	};
+	iterator begin()
+	{
+		return iterator(this,_Left(_Head));
+	}
+	iterator end()
+	{
+		return iterator(this,_Nil);
+	}
+	//class const_iterator
+	//{};
+	//const_iterator begin() const;
+	//const_iterator end() const;
+
+
+	void Show(_Node &node)
+	{
+		cout << "Value : " << node._Value;
+		cout << "; Color: " << (node._Color == _Red ? "Red  " : "Black");
+		cout << "; Parent: " << (node._Parent)->_Value << endl;
+	}
+
+
 	R_BTree():_Head(NULL),_Nil(NULL) 
 	{
 		_Init();
@@ -62,7 +109,18 @@ public:
 			_X = _V < _Value(_X) ? _Left(_X):_Right(_X);
 		}
 		if(_X != _Nil) return ;
-		_Insert(_X,_Y,_V);
+		_Nodeptr _Z = _Insert(_X,_Y,_V);
+
+		if (_Left(_Head) == NULL || _Value(_Left(_Head)) > _V)
+		{
+			if(_Right(_Head) == NULL)
+				_Right(_Head) = _Z;
+			_Left(_Head) = _Z;
+		}
+		else if(_Value(_Right(_Head)) < _V)
+		{
+			_Right(_Head) = _Z;
+		}
 	}
 
 	void InOrder()
@@ -239,7 +297,7 @@ private:
 		return _P;
 	}
 
-	void _Insert(_Nodeptr _X,_Nodeptr _Y,const _Ty &_V)
+	_Nodeptr _Insert(_Nodeptr _X,_Nodeptr _Y,const _Ty &_V)
 	{
 		_Nodeptr _Z = _Buynode(_Y,_Red);
 		if(_Y == _Head)
@@ -300,8 +358,9 @@ private:
 					_Lrotate(_Parent(_Parent(_X)));
 				}
 			}
-		}
+		}//for end
 		_Color(_Root()) = _Black;
+		return _Z;
 	}
 
 	void _Rrotate(_Nodeptr _X)
@@ -372,6 +431,8 @@ private:
 	_Nodeptr _Head;
 	_Nodeptr _Nil;
 };
+#endif 
+
 
 #if 0
 typedef enum { RED = 0, BLACK = 1 } Color;
