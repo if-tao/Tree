@@ -318,7 +318,7 @@ BNode * Adjust_Leaf(BNode *ptr)
 	{
 		pleft = pa->sub[pos - 1];
 	}
-	if (pos <pa->num)
+	if (pos < pa->num)
 	{
 		pright = pa->sub[pos + 1];
 	}

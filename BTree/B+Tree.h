@@ -51,7 +51,12 @@ public:
 
 	bool Insert(KeyType kx, Record *px)
 	{
-		return Insert(root, kx, px);
+		return Insert(root, first, kx, px);
+	}
+
+	bool Remove(KeyType kx)
+	{
+		return Remove(root, first, kx);
 	}
 
 	void InOrder()
@@ -223,7 +228,7 @@ private:
 		return NULL;
 	}
 
-	bool Insert(BNode *&root, KeyType kx,Record *px)
+	static bool Insert(BNode *&root,BNode *&first,KeyType kx,Record *px)
 	{
 		if (root == NULL)
 		{
@@ -248,8 +253,11 @@ private:
 		return true;
 	}
 
-///////////////////////////////////////////////////////
-	void Del_Branch_Item(BNode *ptr, int pos)
+/*
+***************************************************************
+						Remove
+*/
+	static void Del_Branch_Item(BNode *ptr, int pos)
 	{
 		for (int i = pos; i < ptr->num; ++i)
 		{
@@ -260,7 +268,7 @@ private:
 		ptr->num -= 1;
 	}
 	
-	void Del_Leaf_Item(BNode *ptr, int pos)
+	static void Del_Leaf_Item(BNode *ptr, int pos)
 	{
 		for(int i = pos+1; i < ptr->num; ++i)
 		{
@@ -268,9 +276,25 @@ private:
 			ptr->recptr[i-1] = ptr->recptr[i];
 		}
 		ptr->num -= 1;
+
+		if (pos == 0 && ptr->parent != NULL && ptr->prev != NULL)
+		{
+			KeyType kx = ptr->key[0];
+			BNode *pa = ptr->parent;
+			int index = pa->num;
+			while (pa != NULL)
+			{
+				while (index >= 0 && pa->sub[index] != ptr) --index;
+				if (index != 0) break;
+				ptr = pa;
+				pa = ptr->parent;
+				index = pa->num;
+			}
+			pa->key[pos] = kx;
+		}
 	}
 
-	void RMove_Leaf(BNode *pleft, BNode *ptr)
+	static void RMove_Leaf(BNode *pleft, BNode *ptr)
 	{
 		for(int i = ptr->num; i > 0; --i)
 		{
@@ -294,7 +318,7 @@ private:
 		pa->key[pos] = kx;
 	}
 
-	void LMove_Leaf(BNode *pright, BNode *ptr)
+	static void LMove_Leaf(BNode *pright, BNode *ptr)
 	{
 		ptr->key[ptr->num] = pright->key[0];
 		ptr->recptr[ptr->num] = pright->recptr[0];
@@ -305,7 +329,7 @@ private:
 			pright->key[i] = pright->key[i+1];
 			pright->recptr[i] = pright->recptr[i+1];
 		}
-		keyType kx = pright->key[0];
+		KeyType kx = pright->key[0];
 		
 		while(pright->parent != ptr->parent)
 		{
@@ -314,11 +338,11 @@ private:
 		}
 		BNode *pa = ptr->parent;
 		int pos = pa->num;
-		while(pos >= 0 && pos->sub[pos] != ptr) --pos;
+		while(pos >= 0 && pa->sub[pos] != ptr) --pos;
 		pa->key[pos+1] = kx;
 	}
 
-	void LMerge_Leaf(BNode *pleft,BNode *ptr)
+	static void LMerge_Leaf(BNode *pleft,BNode *ptr,BNode *pa,int pos)
 	{
 		for(int i = pleft->num, j = 0; j < ptr->num; ++i, ++j)
 		{
@@ -326,32 +350,165 @@ private:
 			pleft->recptr[i] = ptr->recptr[j];
 		}
 		pleft->num += ptr->num;
-		
+		Del_Branch_Item(pa, pos+1);
 	}
 
-	BNode* Adjust_Leaf(BNode *ptr)
+	static void RMerge_Leaf(BNode *pright, BNode *ptr, BNode *pa, int pos)
 	{
+		if (pos == pa->num)
+		{
+			pa = pright->parent;
+			pos = pos == pa->num ? 0 : pos+1;
+		}
+		LMerge_Leaf(ptr, pright, pa, pos); 
+	}
+
+	static BNode* Adjust_Leaf(BNode *ptr)
+	{
+		BNode *pa = ptr->parent;
 		BNode *pleft = ptr->prev;
 		BNode *pright = ptr->next;
-		if(pleft != NULL && pleft->num > LEAFMIN)
+		int pos = pa->num;
+		while (pos >= 0 && pa->sub[pos] != ptr) --pos;
+		if (pos < 0) { exit(-1); }
+
+		if(pleft != NULL && pos != 0 && pleft->num > LEAFMIN)
 		{
 			RMove_Leaf(pleft,ptr);
 		}
-		else if(pright != NULL && pright->num > LEAFNUM)
+		else if(pright != NULL && pos != pa->num && pright->num > LEAFMIN)
 		{
 			LMove_Leaf(pright,ptr);
 		}
-		else if(pleft != NULL)
+		else if(pleft != NULL && pos != 0)
 		{
-
+			LMerge_Leaf(pleft, ptr,pa,pos);
+			pleft->next = ptr->next;
+			if (ptr->next != NULL)
+				ptr->next->prev = pleft;
+			_Freenode(ptr);
+			ptr = pleft;
 		}
-		else if(pright != NULL)
+		else if(pright != NULL && pos != pa->num)
 		{
+			RMerge_Leaf(pright, ptr, pa, pos);
+			ptr->next = pright->next;
+			if (pright->next != NULL)
+				pright->next->prev = ptr;
+			_Freenode(pright);
+			pright = NULL;
 		}
 
+		if (pa->parent == NULL && pa->num <= 0)
+		{
+			ptr->parent = NULL;
+			_Freenode(pa);
+			return ptr;
+		}
+		else if (pa->parent != NULL && pa->num < BRCHMIN)
+		{
+			return Adjust_Breach(pa);
+		}
+		return NULL;
 	}
 
-	bool Remove(BNode *&root,KeyType kx)
+	static void RMove_Breach(BNode *pleft, BNode *ptr, BNode *pa, int pos)
+	{
+		ptr->key[0] = pa->key[pos];
+		ptr->sub[0] = pleft->sub[pleft->num];
+		if (ptr->sub[0] != NULL)
+			ptr->sub[0]->parent = ptr;
+		for (int i = ptr->num + 1; i > 0; --i)
+		{
+			ptr->key[i] = ptr->key[i - 1];
+			ptr->sub[i] = ptr->sub[i - 1];
+		}
+		pa->key[pos] = pleft->key[pleft->num];
+		ptr->num += 1;
+		pleft->num -= 1;
+	}
+
+	static void LMove_Breach(BNode *pright, BNode *ptr, BNode *pa, int pos)
+	{
+		ptr->num += 1;
+		ptr->key[ptr->num] = pa->key[pos + 1];
+		ptr->sub[ptr->num] = pright->sub[0];
+		if (ptr->sub[ptr->num] != NULL)
+			ptr->sub[ptr->num]->parent = ptr;
+		pa->key[pos + 1] = pright->key[1];
+		Del_Leaf_Item(pright, 0);
+	}
+
+	static void LMerge_Breach(BNode *pleft, BNode *ptr, BNode *pa, int pos)
+	{
+		ptr->key[0] = pa->key[pos];
+		for (int i = pleft->num + 1, j = 0; j <= ptr->num; ++i, ++j)
+		{
+			pleft->key[i] = ptr->key[j];
+			pleft->sub[i] = ptr->sub[j];
+			if (pleft->sub[i] != NULL)
+				pleft->sub[i]->parent = pleft;
+		}
+		pleft->num = pleft->num + ptr->num + 1;
+		Del_Branch_Item(pa, pos);
+	}
+
+	static void RMerge_Breach(BNode *pright, BNode *ptr, BNode *pa, int pos)
+	{
+		LMerge_Breach(ptr, pright, pa, pos + 1);
+	}
+
+	static BNode *Adjust_Breach(BNode *ptr)
+	{
+		BNode *pa = ptr->parent;
+		BNode *pleft = NULL, *pright = NULL;
+		int pos = pa->num;
+		while (pos >= 0 && pa->sub[pos] != ptr) --pos;
+		if (pos < 0) { exit(1); }
+		if (pos > 0)
+		{
+			pleft = pa->sub[pos - 1];
+		}
+		if (pos < pa->num)
+		{
+			pright = pa->sub[pos + 1];
+		}
+
+		if (pleft != NULL && pleft->num > BRCHMIN)
+		{
+			RMove_Breach(pleft, ptr, pa, pos);
+		}
+		else if (pright != NULL && pright->num > BRCHMIN)
+		{
+			LMove_Breach(pright, ptr, pa, pos);
+		}
+		else if (pleft != NULL)
+		{
+			LMerge_Breach(pleft, ptr, pa, pos);
+			_Freenode(ptr);
+			ptr = pleft;
+		}
+		else if (pright != NULL)
+		{
+			RMerge_Breach(pright, ptr, pa, pos);
+			_Freenode(pright);
+			pright = NULL;
+		}
+
+		if (pa->parent == NULL && pa->num <= 0)
+		{
+			ptr->parent = NULL;
+			_Freenode(pa);
+			return ptr;
+		}
+		else if (pa->parent != NULL && pa->num < BRCHMIN)
+		{
+			return Adjust_Breach(pa);
+		}
+		return NULL;
+	}
+
+	static bool Remove(BNode *&root,BNode *&first,KeyType kx)
 	{
 		if(root == NULL) return false;
 		Result res = FindFromRoot(root,kx);
@@ -359,18 +516,19 @@ private:
 		BNode *ptr = res.pnode;
 		int pos = res.index;
 
-		if(ptr->num > LEAFMIN && pos != 0)
+		Del_Leaf_Item(ptr, pos);
+		if(ptr->parent != NULL && ptr->num < LEAFMIN)
 		{
-			for(int i=pos; i<ptr->num-1; ++i)
+			BNode *newroot = Adjust_Leaf(ptr);
+			if (newroot != NULL)
 			{
-				ptr->key[i] = ptr->key[i+1];
-				ptr->recptr[i] = ptr->recptr[i+1];
+				root = newroot;
 			}
-			ptr->num -= 1;
 		}
-		else
+		else if(ptr->parent == NULL && ptr->num == 0)
 		{
-			
+			_Freenode(ptr);
+			first = root = NULL;
 		}
 		return true;
 	}
